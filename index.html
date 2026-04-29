@@ -14,21 +14,21 @@
     }
 
     header {
-      background: #1e3a8a;
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
       color: white;
-      padding: 30px 20px;
+      padding: 34px 20px;
       text-align: center;
     }
 
     main {
-      max-width: 900px;
+      max-width: 980px;
       margin: auto;
       padding: 24px;
     }
 
     .card {
       background: white;
-      border-radius: 20px;
+      border-radius: 22px;
       padding: 24px;
       margin-bottom: 22px;
       box-shadow: 0 8px 22px rgba(0,0,0,0.08);
@@ -70,6 +70,14 @@
       margin-top: 14px;
     }
 
+    .safe {
+      background: #dcfce7;
+      border-left: 6px solid #16a34a;
+      padding: 14px;
+      border-radius: 12px;
+      margin-top: 14px;
+    }
+
     .med {
       border: 1px solid #d1d5db;
       border-radius: 14px;
@@ -93,44 +101,107 @@
       font-weight: bold;
       margin-bottom: 8px;
     }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .tool {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .low {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .medium {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      margin-top: 10px;
+      font-size: 15px;
+    }
   </style>
 </head>
 
 <body>
 <header>
   <h1>DoctorLink</h1>
-  <p>Guided OTC symptom checker</p>
+  <p>A guided OTC symptom checker for safer self-care decisions</p>
 </header>
 
 <main>
 
   <div class="card" id="startCard">
     <h2>Symptom Checker</h2>
-    <p>Answer a few quick questions to view possible causes, warning signs, and suitable OTC options.</p>
+    <p>Answer a few quick questions to view possible causes, warning signs, urgency level, and suitable OTC options.</p>
     <button onclick="startQuiz()">Start Symptom Checker</button>
   </div>
 
   <div class="card hidden" id="q1Section">
-    <div class="progress">Question 1 of 4</div>
+    <div class="progress">Question 1 of 6</div>
     <h2>What best describes your main concern?</h2>
     <div id="categoryButtons"></div>
   </div>
 
   <div class="card hidden" id="q2Section">
-    <div class="progress">Question 2 of 4</div>
+    <div class="progress">Question 2 of 6</div>
     <h2>Select the affected area</h2>
     <p class="small">Choose the closest area related to your symptoms.</p>
     <div id="bodyButtons"></div>
   </div>
 
   <div class="card hidden" id="q3Section">
-    <div class="progress">Question 3 of 4</div>
+    <div class="progress">Question 3 of 6</div>
     <h2>Choose the specific symptom</h2>
     <div id="symptomButtons"></div>
   </div>
 
   <div class="card hidden" id="q4Section">
-    <div class="progress">Question 4 of 4</div>
+    <div class="progress">Question 4 of 6</div>
+    <h2>How severe is it?</h2>
+    <button onclick="answerSeverity('Mild')">Mild</button>
+    <button onclick="answerSeverity('Moderate')">Moderate</button>
+    <button onclick="answerSeverity('Severe')">Severe</button>
+  </div>
+
+  <div class="card hidden" id="q5Section">
+    <div class="progress">Question 5 of 6</div>
+    <h2>How long has this been happening?</h2>
+    <button onclick="answerDuration('Less than 3 days')">Less than 3 days</button>
+    <button onclick="answerDuration('3 to 7 days')">3 to 7 days</button>
+    <button onclick="answerDuration('More than 1 week')">More than 1 week</button>
+  </div>
+
+  <div class="card hidden" id="q6Section">
+    <div class="progress">Question 6 of 6</div>
     <h2>Are you currently taking any medications?</h2>
     <p class="small">This helps highlight when pharmacist advice may be safer.</p>
     <button onclick="finalResult('Yes')">Yes</button>
@@ -141,14 +212,17 @@
   <div class="card hidden" id="resultSection">
     <h2 id="resultTitle"></h2>
 
+    <div id="smartSummaryBox"></div>
+
+    <h3>Urgency level</h3>
+    <div id="urgencyDisplay"></div>
+
     <h3>Possible causes</h3>
     <p id="possibleCauses"></p>
 
     <div class="warning hidden" id="medicationWarning">
       <h3>Medication safety note</h3>
-      <p>
-        Since you selected that you are taking medication or are not sure, check with a pharmacist before using OTC medicines.
-      </p>
+      <p>Since you selected that you are taking medication or are not sure, check with a pharmacist before using OTC medicines.</p>
     </div>
 
     <div class="danger">
@@ -159,11 +233,54 @@
     <h3>Possible OTC options</h3>
     <div id="medicineResults"></div>
 
+    <h3>Helpful next steps</h3>
+    <button onclick="openPharmacyMap()">Find nearby pharmacies</button>
+    <button onclick="openClinicMap()">Find nearby clinics</button>
+    <button onclick="copyResult()">Copy result summary</button>
+
     <p class="small">
       This tool is for general education only and does not replace advice from a doctor or pharmacist.
     </p>
 
     <button class="secondary" onclick="resetQuiz()">Start again</button>
+  </div>
+
+  <div class="card">
+    <h2>Other DoctorLink Tools</h2>
+    <p class="small">Extra features you can expand later.</p>
+
+    <div class="tool-grid">
+      <div class="tool">
+        <h3>OTC Medicine Finder</h3>
+        <p class="small">Search medicines by symptom or use.</p>
+        <button onclick="comingSoon('OTC Medicine Finder')">Open</button>
+      </div>
+
+      <div class="tool">
+        <h3>Drug Interaction Checker</h3>
+        <p class="small">Check medicine interaction notes from your database.</p>
+        <button onclick="showInteractionChecker()">Open</button>
+      </div>
+
+      <div class="tool">
+        <h3>Red Flag Checker</h3>
+        <p class="small">Review warning signs that need medical attention.</p>
+        <button onclick="comingSoon('Red Flag Checker')">Open</button>
+      </div>
+
+      <div class="tool">
+        <h3>Self-Care Guide</h3>
+        <p class="small">Simple care tips for mild symptoms.</p>
+        <button onclick="comingSoon('Self-Care Guide')">Open</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card hidden" id="interactionChecker">
+    <h2>Drug Interaction Checker</h2>
+    <p class="small">Type a medicine name to check interaction notes from your database.</p>
+    <input id="interactionInput" placeholder="Example: ibuprofen, paracetamol, cetirizine" oninput="checkInteraction()" />
+    <div id="interactionResults"></div>
   </div>
 
 </main>
@@ -179,6 +296,8 @@ let symptoms = [];
 let selectedCategory = "";
 let selectedBodyArea = "";
 let selectedSymptom = null;
+let selectedSeverity = "";
+let selectedDuration = "";
 let selectedMedicationStatus = "";
 
 function cleanLabel(label) {
@@ -242,11 +361,9 @@ async function loadData() {
 }
 
 function hideAllSections() {
-  document.getElementById("q1Section").classList.add("hidden");
-  document.getElementById("q2Section").classList.add("hidden");
-  document.getElementById("q3Section").classList.add("hidden");
-  document.getElementById("q4Section").classList.add("hidden");
-  document.getElementById("resultSection").classList.add("hidden");
+  ["q1Section", "q2Section", "q3Section", "q4Section", "q5Section", "q6Section", "resultSection"].forEach(id => {
+    document.getElementById(id).classList.add("hidden");
+  });
 }
 
 function startQuiz() {
@@ -302,7 +419,7 @@ function selectBodyArea(area) {
   filtered.forEach(symptom => {
     const btn = document.createElement("button");
     btn.textContent = symptom.symptom_name;
-    btn.onclick = () => askMedicationQuestion(symptom);
+    btn.onclick = () => answerSymptom(symptom);
     container.appendChild(btn);
   });
 
@@ -310,11 +427,22 @@ function selectBodyArea(area) {
   document.getElementById("q3Section").classList.remove("hidden");
 }
 
-function askMedicationQuestion(symptom) {
+function answerSymptom(symptom) {
   selectedSymptom = symptom;
-
   hideAllSections();
   document.getElementById("q4Section").classList.remove("hidden");
+}
+
+function answerSeverity(severity) {
+  selectedSeverity = severity;
+  hideAllSections();
+  document.getElementById("q5Section").classList.remove("hidden");
+}
+
+function answerDuration(duration) {
+  selectedDuration = duration;
+  hideAllSections();
+  document.getElementById("q6Section").classList.remove("hidden");
 }
 
 function finalResult(answer) {
@@ -322,17 +450,50 @@ function finalResult(answer) {
   showResult(selectedSymptom);
 }
 
+function calculateUrgency(baseUrgency) {
+  let score = 0;
+
+  if (baseUrgency === "low") score += 1;
+  if (baseUrgency === "medium") score += 2;
+  if (baseUrgency === "high") score += 3;
+
+  if (selectedSeverity === "Moderate") score += 1;
+  if (selectedSeverity === "Severe") score += 2;
+
+  if (selectedDuration === "3 to 7 days") score += 1;
+  if (selectedDuration === "More than 1 week") score += 2;
+
+  if (score >= 5) return "high";
+  if (score >= 3) return "medium";
+  return "low";
+}
+
+function urgencyText(level) {
+  if (level === "high") return "High urgency — consider seeing a doctor urgently.";
+  if (level === "medium") return "Medium urgency — speak to a pharmacist or GP if symptoms persist.";
+  return "Low urgency — may be suitable for self-care if there are no red flags.";
+}
+
 function showResult(symptom) {
   hideAllSections();
   document.getElementById("resultSection").classList.remove("hidden");
 
+  const finalUrgency = calculateUrgency(symptom.urgency_level);
+
   document.getElementById("resultTitle").textContent = symptom.symptom_name;
+
+  document.getElementById("urgencyDisplay").innerHTML = `
+    <span class="badge ${finalUrgency}">${finalUrgency.toUpperCase()}</span>
+    <p>${urgencyText(finalUrgency)}</p>
+  `;
 
   document.getElementById("possibleCauses").textContent =
     symptom.possible_causes || "Not available";
 
   document.getElementById("redFlags").textContent =
     symptom.red_flags || "Not available";
+
+  document.getElementById("smartSummaryBox").innerHTML = makeSmartSummary(symptom, finalUrgency);
 
   if (selectedMedicationStatus === "Yes" || selectedMedicationStatus === "Not sure") {
     document.getElementById("medicationWarning").classList.remove("hidden");
@@ -357,6 +518,33 @@ function showResult(symptom) {
   renderMedicines(matchedMeds);
 }
 
+function makeSmartSummary(symptom, urgency) {
+  let boxClass = "safe";
+  let title = "Self-care may be reasonable";
+  let text = "Based on your answers, this may be manageable with self-care and OTC options if there are no warning signs.";
+
+  if (urgency === "medium") {
+    boxClass = "warning";
+    title = "Pharmacist or GP advice may be helpful";
+    text = "Your symptom, severity, or duration suggests it may be safer to ask a pharmacist or GP, especially if symptoms do not improve.";
+  }
+
+  if (urgency === "high") {
+    boxClass = "danger";
+    title = "Medical attention is recommended";
+    text = "Your answers suggest a higher-risk situation. Do not rely only on OTC medicines if symptoms are severe or red flags are present.";
+  }
+
+  return `
+    <div class="${boxClass}">
+      <h3>${title}</h3>
+      <p>${text}</p>
+      <p><strong>Severity:</strong> ${selectedSeverity}</p>
+      <p><strong>Duration:</strong> ${selectedDuration}</p>
+    </div>
+  `;
+}
+
 function renderMedicines(meds) {
   const container = document.getElementById("medicineResults");
   container.innerHTML = "";
@@ -376,9 +564,84 @@ function renderMedicines(meds) {
       <p><strong>Category:</strong> ${med.category}</p>
       <p><strong>Pharmacist required:</strong> ${med.pharmacist_required}</p>
       <p><strong>Avoid if:</strong> ${med.avoid_if}</p>
+      <p><strong>Interaction notes:</strong> ${med.interaction_notes}</p>
       <p><strong>Stop and seek help if:</strong> ${med.red_flags_stop}</p>
       <p><strong>Common side effects:</strong> ${med.common_side_effects}</p>
       <p><strong>Notes:</strong> ${med.notes}</p>
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+function copyResult() {
+  if (!selectedSymptom) return;
+
+  const text = `
+DoctorLink Result
+
+Symptom: ${selectedSymptom.symptom_name}
+Severity: ${selectedSeverity}
+Duration: ${selectedDuration}
+Medication status: ${selectedMedicationStatus}
+
+Possible causes:
+${selectedSymptom.possible_causes}
+
+Warning signs:
+${selectedSymptom.red_flags}
+
+Note:
+This is for general education only and does not replace medical advice.
+  `;
+
+  navigator.clipboard.writeText(text);
+  alert("Result summary copied.");
+}
+
+function openPharmacyMap() {
+  window.open("https://www.google.com/maps/search/pharmacy+near+me", "_blank");
+}
+
+function openClinicMap() {
+  window.open("https://www.google.com/maps/search/clinic+near+me", "_blank");
+}
+
+function comingSoon(tool) {
+  alert(tool + " is coming soon.");
+}
+
+function showInteractionChecker() {
+  document.getElementById("interactionChecker").classList.remove("hidden");
+  document.getElementById("interactionChecker").scrollIntoView({ behavior: "smooth" });
+}
+
+function checkInteraction() {
+  const query = document.getElementById("interactionInput").value.toLowerCase().trim();
+  const container = document.getElementById("interactionResults");
+  container.innerHTML = "";
+
+  if (!query) return;
+
+  const matches = medicines.filter(med =>
+    (med.generic_name || "").toLowerCase().includes(query) ||
+    (med.search_tags || "").toLowerCase().includes(query)
+  );
+
+  if (matches.length === 0) {
+    container.innerHTML = "<p>No medicine found in the database.</p>";
+    return;
+  }
+
+  matches.slice(0, 5).forEach(med => {
+    const div = document.createElement("div");
+    div.className = "med";
+
+    div.innerHTML = `
+      <h4>${med.generic_name}</h4>
+      <p><strong>Avoid if:</strong> ${med.avoid_if}</p>
+      <p><strong>Interaction notes:</strong> ${med.interaction_notes}</p>
+      <p><strong>Pharmacist required:</strong> ${med.pharmacist_required}</p>
     `;
 
     container.appendChild(div);
@@ -389,6 +652,8 @@ function resetQuiz() {
   selectedCategory = "";
   selectedBodyArea = "";
   selectedSymptom = null;
+  selectedSeverity = "";
+  selectedDuration = "";
   selectedMedicationStatus = "";
 
   hideAllSections();
