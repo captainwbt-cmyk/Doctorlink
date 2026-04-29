@@ -106,42 +106,36 @@
 
   <div class="card" id="startCard">
     <h2>Symptom Checker</h2>
-    <p>Answer a few quick questions to see possible causes, red flags, and OTC options.</p>
+    <p>Answer a few quick questions to view possible causes, warning signs, and suitable OTC options.</p>
     <button onclick="startQuiz()">Start Symptom Checker</button>
   </div>
 
   <div class="card hidden" id="q1Section">
-    <div class="progress">Question 1 of 5</div>
-    <h2>What’s going on?</h2>
+    <div class="progress">Question 1 of 4</div>
+    <h2>What best describes your main concern?</h2>
     <div id="categoryButtons"></div>
   </div>
 
   <div class="card hidden" id="q2Section">
-    <div class="progress">Question 2 of 5</div>
-    <h2>Are you currently taking any medications?</h2>
-    <button onclick="answerMedication('Yes')">Yes</button>
-    <button onclick="answerMedication('No')">No</button>
-    <button onclick="answerMedication('Not sure')">Not sure</button>
-  </div>
-
-  <div class="card hidden" id="q3Section">
-    <div class="progress">Question 3 of 5</div>
-    <h2>What are you experiencing?</h2>
-    <p class="small">Choose the closest symptom area.</p>
+    <div class="progress">Question 2 of 4</div>
+    <h2>Select the affected area</h2>
+    <p class="small">Choose the closest area related to your symptoms.</p>
     <div id="bodyButtons"></div>
   </div>
 
-  <div class="card hidden" id="q4Section">
-    <div class="progress">Question 4 of 5</div>
-    <h2>Where is it?</h2>
-    <p id="selectedAreaText"></p>
-    <button onclick="continueToSymptoms()">Continue</button>
-  </div>
-
-  <div class="card hidden" id="q5Section">
-    <div class="progress">Question 5 of 5</div>
+  <div class="card hidden" id="q3Section">
+    <div class="progress">Question 3 of 4</div>
     <h2>Choose the specific symptom</h2>
     <div id="symptomButtons"></div>
+  </div>
+
+  <div class="card hidden" id="q4Section">
+    <div class="progress">Question 4 of 4</div>
+    <h2>Are you currently taking any medications?</h2>
+    <p class="small">This helps highlight when pharmacist advice may be safer.</p>
+    <button onclick="finalResult('Yes')">Yes</button>
+    <button onclick="finalResult('No')">No</button>
+    <button onclick="finalResult('Not sure')">Not sure</button>
   </div>
 
   <div class="card hidden" id="resultSection">
@@ -158,7 +152,7 @@
     </div>
 
     <div class="danger">
-      <h3>See a doctor urgently if:</h3>
+      <h3>Seek medical help urgently if:</h3>
       <p id="redFlags"></p>
     </div>
 
@@ -183,8 +177,14 @@ let medicines = [];
 let symptoms = [];
 
 let selectedCategory = "";
-let selectedMedicationStatus = "";
 let selectedBodyArea = "";
+let selectedSymptom = null;
+let selectedMedicationStatus = "";
+
+function cleanLabel(label) {
+  if (label === "General") return "General Symptoms";
+  return label;
+}
 
 function parseCSV(text) {
   const rows = [];
@@ -241,18 +241,17 @@ async function loadData() {
   renderCategories();
 }
 
-function hideAllQuizSections() {
+function hideAllSections() {
   document.getElementById("q1Section").classList.add("hidden");
   document.getElementById("q2Section").classList.add("hidden");
   document.getElementById("q3Section").classList.add("hidden");
   document.getElementById("q4Section").classList.add("hidden");
-  document.getElementById("q5Section").classList.add("hidden");
   document.getElementById("resultSection").classList.add("hidden");
 }
 
 function startQuiz() {
   document.getElementById("startCard").classList.add("hidden");
-  hideAllQuizSections();
+  hideAllSections();
   document.getElementById("q1Section").classList.remove("hidden");
 }
 
@@ -263,7 +262,7 @@ function renderCategories() {
 
   categories.forEach(category => {
     const btn = document.createElement("button");
-    btn.textContent = category;
+    btn.textContent = cleanLabel(category);
     btn.onclick = () => selectCategory(category);
     container.appendChild(btn);
   });
@@ -271,13 +270,6 @@ function renderCategories() {
 
 function selectCategory(category) {
   selectedCategory = category;
-
-  hideAllQuizSections();
-  document.getElementById("q2Section").classList.remove("hidden");
-}
-
-function answerMedication(answer) {
-  selectedMedicationStatus = answer;
 
   const filtered = symptoms.filter(s => s.category === selectedCategory);
   const bodyAreas = [...new Set(filtered.map(s => s.body_area).filter(Boolean))];
@@ -287,26 +279,18 @@ function answerMedication(answer) {
 
   bodyAreas.forEach(area => {
     const btn = document.createElement("button");
-    btn.textContent = area;
+    btn.textContent = cleanLabel(area);
     btn.onclick = () => selectBodyArea(area);
     container.appendChild(btn);
   });
 
-  hideAllQuizSections();
-  document.getElementById("q3Section").classList.remove("hidden");
+  hideAllSections();
+  document.getElementById("q2Section").classList.remove("hidden");
 }
 
 function selectBodyArea(area) {
   selectedBodyArea = area;
 
-  document.getElementById("selectedAreaText").textContent =
-    "Selected area: " + selectedBodyArea;
-
-  hideAllQuizSections();
-  document.getElementById("q4Section").classList.remove("hidden");
-}
-
-function continueToSymptoms() {
   const filtered = symptoms.filter(s =>
     s.category === selectedCategory &&
     s.body_area === selectedBodyArea
@@ -318,19 +302,32 @@ function continueToSymptoms() {
   filtered.forEach(symptom => {
     const btn = document.createElement("button");
     btn.textContent = symptom.symptom_name;
-    btn.onclick = () => showResult(symptom);
+    btn.onclick = () => askMedicationQuestion(symptom);
     container.appendChild(btn);
   });
 
-  hideAllQuizSections();
-  document.getElementById("q5Section").classList.remove("hidden");
+  hideAllSections();
+  document.getElementById("q3Section").classList.remove("hidden");
+}
+
+function askMedicationQuestion(symptom) {
+  selectedSymptom = symptom;
+
+  hideAllSections();
+  document.getElementById("q4Section").classList.remove("hidden");
+}
+
+function finalResult(answer) {
+  selectedMedicationStatus = answer;
+  showResult(selectedSymptom);
 }
 
 function showResult(symptom) {
-  hideAllQuizSections();
+  hideAllSections();
   document.getElementById("resultSection").classList.remove("hidden");
 
   document.getElementById("resultTitle").textContent = symptom.symptom_name;
+
   document.getElementById("possibleCauses").textContent =
     symptom.possible_causes || "Not available";
 
@@ -390,10 +387,11 @@ function renderMedicines(meds) {
 
 function resetQuiz() {
   selectedCategory = "";
-  selectedMedicationStatus = "";
   selectedBodyArea = "";
+  selectedSymptom = null;
+  selectedMedicationStatus = "";
 
-  hideAllQuizSections();
+  hideAllSections();
   document.getElementById("startCard").classList.remove("hidden");
 }
 
