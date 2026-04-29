@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OTC Symptom Checker</title>
+  <title>DoctorLink</title>
 
   <style>
     body {
@@ -16,7 +16,7 @@
     header {
       background: #1e3a8a;
       color: white;
-      padding: 28px;
+      padding: 30px 20px;
       text-align: center;
     }
 
@@ -28,10 +28,10 @@
 
     .card {
       background: white;
-      border-radius: 18px;
-      padding: 22px;
+      border-radius: 20px;
+      padding: 24px;
       margin-bottom: 22px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+      box-shadow: 0 8px 22px rgba(0,0,0,0.08);
     }
 
     button {
@@ -39,7 +39,7 @@
       background: #2563eb;
       color: white;
       padding: 12px 16px;
-      border-radius: 12px;
+      border-radius: 14px;
       margin: 6px;
       cursor: pointer;
       font-size: 15px;
@@ -58,15 +58,24 @@
       background: #fee2e2;
       border-left: 6px solid #dc2626;
       padding: 14px;
-      border-radius: 10px;
-      margin-top: 12px;
+      border-radius: 12px;
+      margin-top: 14px;
+    }
+
+    .warning {
+      background: #fef3c7;
+      border-left: 6px solid #f59e0b;
+      padding: 14px;
+      border-radius: 12px;
+      margin-top: 14px;
     }
 
     .med {
       border: 1px solid #d1d5db;
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 14px;
       margin-top: 12px;
+      background: #fafafa;
     }
 
     .hidden {
@@ -78,42 +87,60 @@
       color: #6b7280;
     }
 
-    input {
-      width: 100%;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid #d1d5db;
-      margin-top: 10px;
-      font-size: 16px;
+    .progress {
+      font-size: 14px;
+      color: #2563eb;
+      font-weight: bold;
+      margin-bottom: 8px;
     }
   </style>
 </head>
 
 <body>
 <header>
-  <h1>OTC Symptom Checker</h1>
-  <p>Find possible causes, red flags, and suitable OTC options</p>
+  <h1>DoctorLink</h1>
+  <p>Guided OTC symptom checker</p>
 </header>
 
 <main>
-  <div class="card">
-    <h2>Search symptoms</h2>
-    <input id="searchInput" placeholder="Example: headache, cough, diarrhoea..." />
-    <div id="searchResults"></div>
+
+  <div class="card" id="startCard">
+    <h2>Symptom Checker</h2>
+    <p>Answer a few quick questions to see possible causes, red flags, and OTC options.</p>
+    <button onclick="startQuiz()">Start Symptom Checker</button>
   </div>
 
-  <div class="card" id="categorySection">
+  <div class="card hidden" id="q1Section">
+    <div class="progress">Question 1 of 5</div>
     <h2>What’s going on?</h2>
     <div id="categoryButtons"></div>
   </div>
 
-  <div class="card hidden" id="bodySection">
-    <h2>Where is it?</h2>
+  <div class="card hidden" id="q2Section">
+    <div class="progress">Question 2 of 5</div>
+    <h2>Are you currently taking any medications?</h2>
+    <button onclick="answerMedication('Yes')">Yes</button>
+    <button onclick="answerMedication('No')">No</button>
+    <button onclick="answerMedication('Not sure')">Not sure</button>
+  </div>
+
+  <div class="card hidden" id="q3Section">
+    <div class="progress">Question 3 of 5</div>
+    <h2>What are you experiencing?</h2>
+    <p class="small">Choose the closest symptom area.</p>
     <div id="bodyButtons"></div>
   </div>
 
-  <div class="card hidden" id="symptomSection">
-    <h2>Select symptom</h2>
+  <div class="card hidden" id="q4Section">
+    <div class="progress">Question 4 of 5</div>
+    <h2>Where is it?</h2>
+    <p id="selectedAreaText"></p>
+    <button onclick="continueToSymptoms()">Continue</button>
+  </div>
+
+  <div class="card hidden" id="q5Section">
+    <div class="progress">Question 5 of 5</div>
+    <h2>Choose the specific symptom</h2>
     <div id="symptomButtons"></div>
   </div>
 
@@ -122,6 +149,13 @@
 
     <h3>Possible causes</h3>
     <p id="possibleCauses"></p>
+
+    <div class="warning hidden" id="medicationWarning">
+      <h3>Medication safety note</h3>
+      <p>
+        Since you selected that you are taking medication or are not sure, check with a pharmacist before using OTC medicines.
+      </p>
+    </div>
 
     <div class="danger">
       <h3>See a doctor urgently if:</h3>
@@ -135,8 +169,9 @@
       This tool is for general education only and does not replace advice from a doctor or pharmacist.
     </p>
 
-    <button class="secondary" onclick="resetFlow()">Start again</button>
+    <button class="secondary" onclick="resetQuiz()">Start again</button>
   </div>
+
 </main>
 
 <script>
@@ -146,7 +181,9 @@ const SYMPTOM_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQfZvK-
 
 let medicines = [];
 let symptoms = [];
+
 let selectedCategory = "";
+let selectedMedicationStatus = "";
 let selectedBodyArea = "";
 
 function parseCSV(text) {
@@ -204,6 +241,21 @@ async function loadData() {
   renderCategories();
 }
 
+function hideAllQuizSections() {
+  document.getElementById("q1Section").classList.add("hidden");
+  document.getElementById("q2Section").classList.add("hidden");
+  document.getElementById("q3Section").classList.add("hidden");
+  document.getElementById("q4Section").classList.add("hidden");
+  document.getElementById("q5Section").classList.add("hidden");
+  document.getElementById("resultSection").classList.add("hidden");
+}
+
+function startQuiz() {
+  document.getElementById("startCard").classList.add("hidden");
+  hideAllQuizSections();
+  document.getElementById("q1Section").classList.remove("hidden");
+}
+
 function renderCategories() {
   const categories = [...new Set(symptoms.map(s => s.category).filter(Boolean))];
   const container = document.getElementById("categoryButtons");
@@ -220,12 +272,15 @@ function renderCategories() {
 function selectCategory(category) {
   selectedCategory = category;
 
-  const filtered = symptoms.filter(s => s.category === category);
-  const bodyAreas = [...new Set(filtered.map(s => s.body_area).filter(Boolean))];
+  hideAllQuizSections();
+  document.getElementById("q2Section").classList.remove("hidden");
+}
 
-  document.getElementById("bodySection").classList.remove("hidden");
-  document.getElementById("symptomSection").classList.add("hidden");
-  document.getElementById("resultSection").classList.add("hidden");
+function answerMedication(answer) {
+  selectedMedicationStatus = answer;
+
+  const filtered = symptoms.filter(s => s.category === selectedCategory);
+  const bodyAreas = [...new Set(filtered.map(s => s.body_area).filter(Boolean))];
 
   const container = document.getElementById("bodyButtons");
   container.innerHTML = "";
@@ -236,18 +291,26 @@ function selectCategory(category) {
     btn.onclick = () => selectBodyArea(area);
     container.appendChild(btn);
   });
+
+  hideAllQuizSections();
+  document.getElementById("q3Section").classList.remove("hidden");
 }
 
 function selectBodyArea(area) {
   selectedBodyArea = area;
 
+  document.getElementById("selectedAreaText").textContent =
+    "Selected area: " + selectedBodyArea;
+
+  hideAllQuizSections();
+  document.getElementById("q4Section").classList.remove("hidden");
+}
+
+function continueToSymptoms() {
   const filtered = symptoms.filter(s =>
     s.category === selectedCategory &&
     s.body_area === selectedBodyArea
   );
-
-  document.getElementById("symptomSection").classList.remove("hidden");
-  document.getElementById("resultSection").classList.add("hidden");
 
   const container = document.getElementById("symptomButtons");
   container.innerHTML = "";
@@ -258,14 +321,27 @@ function selectBodyArea(area) {
     btn.onclick = () => showResult(symptom);
     container.appendChild(btn);
   });
+
+  hideAllQuizSections();
+  document.getElementById("q5Section").classList.remove("hidden");
 }
 
 function showResult(symptom) {
+  hideAllQuizSections();
   document.getElementById("resultSection").classList.remove("hidden");
 
   document.getElementById("resultTitle").textContent = symptom.symptom_name;
-  document.getElementById("possibleCauses").textContent = symptom.possible_causes || "Not available";
-  document.getElementById("redFlags").textContent = symptom.red_flags || "Not available";
+  document.getElementById("possibleCauses").textContent =
+    symptom.possible_causes || "Not available";
+
+  document.getElementById("redFlags").textContent =
+    symptom.red_flags || "Not available";
+
+  if (selectedMedicationStatus === "Yes" || selectedMedicationStatus === "Not sure") {
+    document.getElementById("medicationWarning").classList.remove("hidden");
+  } else {
+    document.getElementById("medicationWarning").classList.add("hidden");
+  }
 
   const symptomWords = (
     symptom.symptom_name + "; " +
@@ -275,6 +351,7 @@ function showResult(symptom) {
   const matchedMeds = medicines.filter(med => {
     const tags = (med.search_tags || "").toLowerCase();
     const subCategory = (med.sub_category || "").toLowerCase();
+
     return symptomWords.some(word =>
       tags.includes(word) || subCategory.includes(word)
     );
@@ -311,44 +388,17 @@ function renderMedicines(meds) {
   });
 }
 
-document.getElementById("searchInput").addEventListener("input", function () {
-  const query = this.value.toLowerCase().trim();
-  const container = document.getElementById("searchResults");
-  container.innerHTML = "";
-
-  if (!query) return;
-
-  const matches = symptoms.filter(symptom => {
-    const text = (
-      symptom.symptom_name + " " +
-      symptom.keywords + " " +
-      symptom.body_area + " " +
-      symptom.category
-    ).toLowerCase();
-
-    return text.includes(query);
-  });
-
-  matches.slice(0, 8).forEach(symptom => {
-    const btn = document.createElement("button");
-    btn.textContent = symptom.symptom_name;
-    btn.onclick = () => showResult(symptom);
-    container.appendChild(btn);
-  });
-});
-
-function resetFlow() {
+function resetQuiz() {
   selectedCategory = "";
+  selectedMedicationStatus = "";
   selectedBodyArea = "";
 
-  document.getElementById("bodySection").classList.add("hidden");
-  document.getElementById("symptomSection").classList.add("hidden");
-  document.getElementById("resultSection").classList.add("hidden");
-  document.getElementById("searchInput").value = "";
-  document.getElementById("searchResults").innerHTML = "";
+  hideAllQuizSections();
+  document.getElementById("startCard").classList.remove("hidden");
 }
 
 loadData();
 </script>
+
 </body>
 </html>
