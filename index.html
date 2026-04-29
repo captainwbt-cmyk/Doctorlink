@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OTC Symptom Checker</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f8fb;
+      margin: 0;
+      color: #1f2937;
+    }
+
+    header {
+      background: #1e3a8a;
+      color: white;
+      padding: 28px;
+      text-align: center;
+    }
+
+    main {
+      max-width: 900px;
+      margin: auto;
+      padding: 24px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 22px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    }
+
+    button {
+      border: none;
+      background: #2563eb;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin: 6px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    .secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .danger {
+      background: #fee2e2;
+      border-left: 6px solid #dc2626;
+      padding: 14px;
+      border-radius: 10px;
+      margin-top: 12px;
+    }
+
+    .med {
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 12px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .small {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>OTC Symptom Checker</h1>
+  <p>Find possible causes, red flags, and suitable OTC options</p>
+</header>
+
+<main>
+  <div class="card">
+    <h2>Search symptoms</h2>
+    <input id="searchInput" placeholder="Example: headache, cough, diarrhoea..." />
+    <div id="searchResults"></div>
+  </div>
+
+  <div class="card" id="categorySection">
+    <h2>What’s going on?</h2>
+    <div id="categoryButtons"></div>
+  </div>
+
+  <div class="card hidden" id="bodySection">
+    <h2>Where is it?</h2>
+    <div id="bodyButtons"></div>
+  </div>
+
+  <div class="card hidden" id="symptomSection">
+    <h2>Select symptom</h2>
+    <div id="symptomButtons"></div>
+  </div>
+
+  <div class="card hidden" id="resultSection">
+    <h2 id="resultTitle"></h2>
+
+    <h3>Possible causes</h3>
+    <p id="possibleCauses"></p>
+
+    <div class="danger">
+      <h3>See a doctor urgently if:</h3>
+      <p id="redFlags"></p>
+    </div>
+
+    <h3>Possible OTC options</h3>
+    <div id="medicineResults"></div>
+
+    <p class="small">
+      This tool is for general education only and does not replace advice from a doctor or pharmacist.
+    </p>
+
+    <button class="secondary" onclick="resetFlow()">Start again</button>
+  </div>
+</main>
+
+<script>
+const MED_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQfZvK-wYZmVGoIzktNSB5Ow_iHYmSJhslHatcEB89AZplUyc7qy7f1NPgUBKYLfMf1EFrr5LzEs4PB/pub?gid=0&single=true&output=csv";
+
+const SYMPTOM_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQfZvK-wYZmVGoIzktNSB5Ow_iHYmSJhslHatcEB89AZplUyc7qy7f1NPgUBKYLfMf1EFrr5LzEs4PB/pub?gid=348527293&single=true&output=csv";
+
+let medicines = [];
+let symptoms = [];
+let selectedCategory = "";
+let selectedBodyArea = "";
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let value = "";
+  let insideQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (char === '"' && insideQuotes && nextChar === '"') {
+      value += '"';
+      i++;
+    } else if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === "," && !insideQuotes) {
+      row.push(value.trim());
+      value = "";
+    } else if ((char === "\n" || char === "\r") && !insideQuotes) {
+      if (value || row.length) {
+        row.push(value.trim());
+        rows.push(row);
+        row = [];
+        value = "";
+      }
+    } else {
+      value += char;
+    }
+  }
+
+  if (value || row.length) {
+    row.push(value.trim());
+    rows.push(row);
+  }
+
+  const headers = rows[0];
+  return rows.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((header, index) => {
+      obj[header.trim()] = row[index] ? row[index].trim() : "";
+    });
+    return obj;
+  });
+}
+
+async function loadData() {
+  const medText = await fetch(MED_CSV_URL).then(res => res.text());
+  const symptomText = await fetch(SYMPTOM_CSV_URL).then(res => res.text());
+
+  medicines = parseCSV(medText);
+  symptoms = parseCSV(symptomText);
+
+  renderCategories();
+}
+
+function renderCategories() {
+  const categories = [...new Set(symptoms.map(s => s.category).filter(Boolean))];
+  const container = document.getElementById("categoryButtons");
+  container.innerHTML = "";
+
+  categories.forEach(category => {
+    const btn = document.createElement("button");
+    btn.textContent = category;
+    btn.onclick = () => selectCategory(category);
+    container.appendChild(btn);
+  });
+}
+
+function selectCategory(category) {
+  selectedCategory = category;
+
+  const filtered = symptoms.filter(s => s.category === category);
+  const bodyAreas = [...new Set(filtered.map(s => s.body_area).filter(Boolean))];
+
+  document.getElementById("bodySection").classList.remove("hidden");
+  document.getElementById("symptomSection").classList.add("hidden");
+  document.getElementById("resultSection").classList.add("hidden");
+
+  const container = document.getElementById("bodyButtons");
+  container.innerHTML = "";
+
+  bodyAreas.forEach(area => {
+    const btn = document.createElement("button");
+    btn.textContent = area;
+    btn.onclick = () => selectBodyArea(area);
+    container.appendChild(btn);
+  });
+}
+
+function selectBodyArea(area) {
+  selectedBodyArea = area;
+
+  const filtered = symptoms.filter(s =>
+    s.category === selectedCategory &&
+    s.body_area === selectedBodyArea
+  );
+
+  document.getElementById("symptomSection").classList.remove("hidden");
+  document.getElementById("resultSection").classList.add("hidden");
+
+  const container = document.getElementById("symptomButtons");
+  container.innerHTML = "";
+
+  filtered.forEach(symptom => {
+    const btn = document.createElement("button");
+    btn.textContent = symptom.symptom_name;
+    btn.onclick = () => showResult(symptom);
+    container.appendChild(btn);
+  });
+}
+
+function showResult(symptom) {
+  document.getElementById("resultSection").classList.remove("hidden");
+
+  document.getElementById("resultTitle").textContent = symptom.symptom_name;
+  document.getElementById("possibleCauses").textContent = symptom.possible_causes || "Not available";
+  document.getElementById("redFlags").textContent = symptom.red_flags || "Not available";
+
+  const symptomWords = (
+    symptom.symptom_name + "; " +
+    symptom.keywords
+  ).toLowerCase().split(";").map(w => w.trim()).filter(Boolean);
+
+  const matchedMeds = medicines.filter(med => {
+    const tags = (med.search_tags || "").toLowerCase();
+    const subCategory = (med.sub_category || "").toLowerCase();
+    return symptomWords.some(word =>
+      tags.includes(word) || subCategory.includes(word)
+    );
+  });
+
+  renderMedicines(matchedMeds);
+}
+
+function renderMedicines(meds) {
+  const container = document.getElementById("medicineResults");
+  container.innerHTML = "";
+
+  if (meds.length === 0) {
+    container.innerHTML = "<p>No clear OTC match found. Ask a pharmacist.</p>";
+    return;
+  }
+
+  meds.slice(0, 6).forEach(med => {
+    const div = document.createElement("div");
+    div.className = "med";
+
+    div.innerHTML = `
+      <h4>${med.generic_name}</h4>
+      <p><strong>Use:</strong> ${med.primary_use}</p>
+      <p><strong>Category:</strong> ${med.category}</p>
+      <p><strong>Pharmacist required:</strong> ${med.pharmacist_required}</p>
+      <p><strong>Avoid if:</strong> ${med.avoid_if}</p>
+      <p><strong>Stop and seek help if:</strong> ${med.red_flags_stop}</p>
+      <p><strong>Common side effects:</strong> ${med.common_side_effects}</p>
+      <p><strong>Notes:</strong> ${med.notes}</p>
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+document.getElementById("searchInput").addEventListener("input", function () {
+  const query = this.value.toLowerCase().trim();
+  const container = document.getElementById("searchResults");
+  container.innerHTML = "";
+
+  if (!query) return;
+
+  const matches = symptoms.filter(symptom => {
+    const text = (
+      symptom.symptom_name + " " +
+      symptom.keywords + " " +
+      symptom.body_area + " " +
+      symptom.category
+    ).toLowerCase();
+
+    return text.includes(query);
+  });
+
+  matches.slice(0, 8).forEach(symptom => {
+    const btn = document.createElement("button");
+    btn.textContent = symptom.symptom_name;
+    btn.onclick = () => showResult(symptom);
+    container.appendChild(btn);
+  });
+});
+
+function resetFlow() {
+  selectedCategory = "";
+  selectedBodyArea = "";
+
+  document.getElementById("bodySection").classList.add("hidden");
+  document.getElementById("symptomSection").classList.add("hidden");
+  document.getElementById("resultSection").classList.add("hidden");
+  document.getElementById("searchInput").value = "";
+  document.getElementById("searchResults").innerHTML = "";
+}
+
+loadData();
+</script>
+</body>
+</html>
